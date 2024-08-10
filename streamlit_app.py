@@ -103,7 +103,7 @@ if st.session_state['logged_in']:
         st.session_state['logged_in'] = False
         st.session_state['username'] = ""
 else:
-    st.markdown("<h1 style='text-align: center; color: #FF5733;'>Enhanced To-Do List with Login</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color: #FF5733;'>To-Do List with Login</h1>", unsafe_allow_html=True)
 
     menu = st.sidebar.selectbox("Menu", ["Login", "Register"])
 
