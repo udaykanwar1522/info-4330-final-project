@@ -3,31 +3,10 @@ import sqlite3
 from hashlib import sha256
 from datetime import date
 
-# Initialize SQLite Database
-conn = sqlite3.connect('todo_app.db')
-c = conn.cursor()
-
-# Create Users table
-c.execute('''
-    CREATE TABLE IF NOT EXISTS users (
-        username TEXT PRIMARY KEY,
-        password TEXT NOT NULL
-    )
-''')
-
-# Create Tasks table with updated schema
-c.execute('''
-    CREATE TABLE IF NOT EXISTS tasks (
-        id INTEGER PRIMARY KEY,
-        username TEXT,
-        task TEXT,
-        priority TEXT,
-        due_date DATE,
-        completed BOOLEAN
-    )
-''')
-
-conn.commit()
+# Function to create a database connection
+def get_db_connection():
+    conn = sqlite3.connect('todo_app.db')
+    return conn, conn.cursor()
 
 # Function to hash passwords
 def hash_password(password):
@@ -35,33 +14,72 @@ def hash_password(password):
 
 # Function to authenticate user
 def authenticate_user(username, password):
+    conn, c = get_db_connection()
     c.execute('SELECT * FROM users WHERE username = ? AND password = ?', (username, hash_password(password)))
-    return c.fetchone()
+    user = c.fetchone()
+    conn.close()
+    return user
 
 # Function to add user
 def add_user(username, password):
+    conn, c = get_db_connection()
     c.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, hash_password(password)))
     conn.commit()
+    conn.close()
 
 # Function to add task
 def add_task(username, task, priority, due_date):
+    conn, c = get_db_connection()
     c.execute('INSERT INTO tasks (username, task, priority, due_date, completed) VALUES (?, ?, ?, ?, ?)', (username, task, priority, due_date, False))
     conn.commit()
+    conn.close()
 
 # Function to get tasks
 def get_tasks(username):
+    conn, c = get_db_connection()
     c.execute('SELECT * FROM tasks WHERE username = ?', (username,))
-    return c.fetchall()
+    tasks = c.fetchall()
+    conn.close()
+    return tasks
 
 # Function to remove task
 def remove_task(task_id):
+    conn, c = get_db_connection()
     c.execute('DELETE FROM tasks WHERE id = ?', (task_id,))
     conn.commit()
+    conn.close()
 
 # Function to toggle task completion
 def toggle_task(task_id, completed):
+    conn, c = get_db_connection()
     c.execute('UPDATE tasks SET completed = ? WHERE id = ?', (completed, task_id))
     conn.commit()
+    conn.close()
+
+# Initialize the database and create tables if they don't exist
+def initialize_db():
+    conn, c = get_db_connection()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            username TEXT PRIMARY KEY,
+            password TEXT NOT NULL
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS tasks (
+            id INTEGER PRIMARY KEY,
+            username TEXT,
+            task TEXT,
+            priority TEXT,
+            due_date DATE,
+            completed BOOLEAN
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# Initialize the database
+initialize_db()
 
 # Login/Register system
 if 'logged_in' not in st.session_state:
@@ -78,6 +96,7 @@ if st.session_state['logged_in']:
 
     if st.button("Add Task"):
         add_task(st.session_state['username'], task, priority, due_date)
+        st.experimental_rerun()
 
     tasks = get_tasks(st.session_state['username'])
 
@@ -98,10 +117,12 @@ if st.session_state['logged_in']:
         with col5:
             if st.button("Delete", key=f"delete_{task[0]}"):
                 remove_task(task[0])
+                st.experimental_rerun()
 
     if st.button("Logout"):
         st.session_state['logged_in'] = False
         st.session_state['username'] = ""
+        st.experimental_rerun()
 else:
     st.markdown("<h1 style='text-align: center; color: #FF5733;'>To-Do List with Login</h1>", unsafe_allow_html=True)
 
@@ -137,6 +158,3 @@ else:
                     st.error("Username already exists")
             else:
                 st.error("Passwords do not match")
-
-# Close the database connection
-conn.close()
